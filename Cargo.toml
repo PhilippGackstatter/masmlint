@@ -1,0 +1,15 @@
+[package]
+name = "masmlint"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+miden-assembly = { version = "0.14", default-features = false, features = [
+  "testing",
+] }
+miden-core = { version = "0.14", default-features = false }
+thiserror = "1"
+miette = { package = "miden-miette", version = "8.0", default-features = false, features = [
+  "fancy-no-syscall",
+  "derive",
+] }
