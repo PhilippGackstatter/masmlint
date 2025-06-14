@@ -10,4 +10,4 @@ mod bare_assert;
 pub use bare_assert::BareAssert;
 
 mod linter;
-pub use linter::{EarlyLintPass, LateLintPass, Linter};
+pub use linter::{EarlyLintPass, Linter};
