@@ -6,16 +6,16 @@ pub enum LintError {
     #[error("push before instruction that takes an immediate value")]
     #[diagnostic(help("use the instruction in its immediate form, e.g. `{alternative}`"))]
     PushBeforeInstructionWithImmediateVariant {
-        #[label]
+        #[label("can be rewritten to use an immediate")]
         span: SourceSpan,
         alternative: String,
     },
     #[error("assert without error message")]
     #[diagnostic(help(
-        "use the instruction with a helpful error message to help with debugging, e.g. `{assert_with_error}`"
+        "use the instruction with a helpful error message, e.g. `{assert_with_error}`"
     ))]
     BareAssert {
-        #[label]
+        #[label("does not include an error message")]
         span: SourceSpan,
         assert_with_error: Instruction,
     },

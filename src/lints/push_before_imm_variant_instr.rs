@@ -35,7 +35,6 @@ impl EarlyLintPass for PushBeforeImmVariantInstr {
                     prev_span.start()..current_instr.span().end(),
                 );
 
-                // Don't return, push error instead and continue.
                 linter.push_error(LintError::PushBeforeInstructionWithImmediateVariant {
                     span: full_span,
                     alternative,
@@ -77,11 +76,11 @@ fn match_push_instruction(instruction: &Span<Instruction>) -> Option<ImmediateWi
     }
 }
 
-// Some instructions support immediate-style MASM but do not have explicit instruction variants,
-// such as `lt`. When writing `lt.2` in MASM, it is rewritten to `push.2 lt` at parsing time. To
-// differentiate the case when the MASM code contains `push.2 lt` or `lt.2` we can check if the
-// source span of the push instruction is different from the instruction one, which is only the case
-// if it was automatically rewritten.
+// Some instructions support immediate-style MASM but do not have explicit immediate instruction
+// variants, such as `lt`. When writing `lt.2` in MASM, it is rewritten to `push.2 lt` at parsing
+// time. To differentiate the case when the MASM code contains `push.2 lt` or `lt.2` we can check if
+// the source span of the push instruction is different from the instruction one, which is only the
+// case if it was automatically rewritten.
 fn match_non_immediate_instruction(
     prev_span: SourceSpan,
     imm: ImmediateWithoutSpan,

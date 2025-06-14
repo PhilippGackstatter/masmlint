@@ -1,21 +1,116 @@
-use std::sync::Arc;
+extern crate alloc;
+
+use std::{
+    fs, io,
+    path::{Path, PathBuf},
+    sync::Arc,
+};
 
 use masmlint::{
     EarlyLintPass, Linter,
     lints::{BareAssert, PushBeforeImmVariantInstr},
 };
 use miden_assembly::{SourceFile, SourceId};
+use miette::Report;
 
 fn main() -> miette::Result<()> {
-    let source_path = std::env::args().nth(1).unwrap();
+    let source_path = std::env::args().nth(1).ok_or_else(|| {
+        Report::msg("expected first cli argument to be a path to a .masm file or a directory")
+    })?;
+    let source_path = Path::new(&source_path);
 
-    let source = std::fs::read(&source_path).unwrap();
-    let source_content = String::from_utf8(source).unwrap();
+    let masm_files = if source_path.is_dir() {
+        get_masm_files(source_path).map_err(|err| {
+            Report::msg(format!(
+                "failed to get masm files from directory {}: {err}",
+                source_path.display()
+            ))
+        })?
+    } else {
+        vec![source_path.to_owned()]
+    };
 
-    let source_file = SourceFile::new(SourceId::new(5), source_path, source_content);
+    let mut errors = vec![];
+    for (file_idx, file) in masm_files.into_iter().enumerate() {
+        let source = std::fs::read(&file)
+            .map_err(|err| Report::msg(format!("failed to open file {}: {err}", file.display())))?;
+        let source_content = String::from_utf8(source)
+            .map_err(|err| Report::msg(format!("failed to decode file as UTF-8: {err}")))?;
 
-    let early_lints: Vec<Box<dyn EarlyLintPass>> =
-        vec![Box::new(PushBeforeImmVariantInstr::new()), Box::new(BareAssert)];
+        let file_name = format!("{}", file.display());
+        let id = SourceId::try_from(file_idx)
+            .expect("system limit: source manager has exhausted its supply of source ids");
+        let source_file = SourceFile::new(id, file_name, source_content);
 
-    Linter::new().lint(early_lints, Arc::new(source_file))
+        let early_lints: Vec<Box<dyn EarlyLintPass>> =
+            vec![Box::new(PushBeforeImmVariantInstr::new()), Box::new(BareAssert)];
+
+        if let Err(err) = Linter::new().lint(early_lints, Arc::new(source_file)) {
+            errors.push(err);
+        }
+    }
+
+    if errors.is_empty() {
+        Ok(())
+    } else {
+        Err(LinterErrors { errors }.into())
+    }
+}
+
+/// Returns a vector with paths to all MASM files in the specified directory.
+///
+/// All non-MASM files are skipped.
+fn get_masm_files<P: AsRef<Path>>(dir_path: P) -> io::Result<Vec<PathBuf>> {
+    let mut files = Vec::new();
+
+    match fs::read_dir(dir_path) {
+        Ok(entries) => {
+            for entry in entries {
+                match entry {
+                    Ok(entry) => {
+                        let entry_path = entry.path();
+                        if entry_path.is_dir() {
+                            files.extend(get_masm_files(entry_path)?);
+                        } else if is_masm_file(&entry_path)? {
+                            files.push(entry_path);
+                        }
+                    },
+                    Err(e) => {
+                        return Err(io::Error::other(format!(
+                            "Error reading directory entry: {}",
+                            e
+                        )));
+                    },
+                }
+            }
+        },
+        Err(e) => {
+            return Err(io::Error::other(format!("Error reading directory: {}", e)));
+        },
+    }
+
+    Ok(files)
+}
+
+/// Returns true if the provided path resolves to a file with `.masm` extension.
+///
+/// # Errors
+/// Returns an error if the path could not be converted to a UTF-8 string.
+fn is_masm_file(path: &Path) -> io::Result<bool> {
+    if let Some(extension) = path.extension() {
+        let extension = extension
+            .to_str()
+            .ok_or_else(|| io::Error::other("invalid UTF-8 filename"))?
+            .to_lowercase();
+        Ok(extension == "masm")
+    } else {
+        Ok(false)
+    }
+}
+
+#[derive(Debug, thiserror::Error, miette::Diagnostic)]
+#[error("one or more files have failed lints")]
+pub struct LinterErrors {
+    #[related]
+    errors: Vec<Report>,
 }
