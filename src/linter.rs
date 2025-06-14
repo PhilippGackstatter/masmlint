@@ -31,7 +31,7 @@ impl Linter {
             Ok(())
         } else {
             let error = LinterError::new(errors);
-            let error = Report::from(error).with_source_code(source.as_bytes().to_vec());
+            let error = Report::from(error).with_source_code(source);
             Err(error)
         }
     }
