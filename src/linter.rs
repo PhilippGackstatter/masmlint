@@ -1,8 +1,8 @@
 use std::sync::Arc;
 
 use miden_assembly::{
-    LibraryPath, ModuleParser, Report, SourceFile,
-    ast::{Form, Module, ModuleKind},
+    LibraryPath, ModuleParser, Report, SourceFile, Span,
+    ast::{Block, Export, Form, Instruction, Module, ModuleKind, Op},
     testing::TestContext,
 };
 use miette::{Context, Result};
@@ -41,7 +41,7 @@ impl Linter {
 
     fn early_lint(
         &mut self,
-        lints: Vec<Box<dyn EarlyLintPass>>,
+        mut lints: Vec<Box<dyn EarlyLintPass>>,
         source: Arc<SourceFile>,
     ) -> Result<()> {
         // This is abusing the miden-assembly testing feature to be able to parse the forms,
@@ -50,11 +50,41 @@ impl Linter {
             .parse_forms(source)
             .context("failed to parse source into forms")?;
 
-        for mut lint in lints {
-            lint.lint(self, &forms);
+        for form in forms {
+            let Form::Procedure(Export::Procedure(proc)) = form else {
+                continue;
+            };
+
+            self.lint_block(proc.body(), &mut lints);
         }
 
         Ok(())
+    }
+
+    pub fn lint_block(&mut self, block: &Block, lints: &mut [Box<dyn EarlyLintPass>]) {
+        for lint in lints.iter_mut() {
+            lint.block_changed(block);
+        }
+
+        for op in block.iter() {
+            match op {
+                Op::If { then_blk, else_blk, .. } => {
+                    self.lint_block(then_blk, lints);
+                    self.lint_block(else_blk, lints);
+                },
+                Op::While { body, .. } => {
+                    self.lint_block(body, lints);
+                },
+                Op::Repeat { body, .. } => {
+                    self.lint_block(body, lints);
+                },
+                Op::Inst(instr) => {
+                    for lint in lints.iter_mut() {
+                        lint.lint_instruction(self, instr);
+                    }
+                },
+            }
+        }
     }
 
     fn late_lint(
@@ -89,5 +119,6 @@ pub trait LateLintPass {
 }
 
 pub trait EarlyLintPass {
-    fn lint(&mut self, linter: &mut Linter, forms: &[Form]);
+    fn lint_instruction(&mut self, linter: &mut Linter, instruction: &Span<Instruction>);
+    fn block_changed(&mut self, _block: &Block) {}
 }

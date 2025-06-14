@@ -1,32 +1,32 @@
 use miden_assembly::{
     SourceId, SourceSpan, Span,
-    ast::{Block, Export, Ident, Immediate, Instruction, Module, Op},
+    ast::{Block, Ident, Immediate, Instruction},
 };
 use miden_core::Felt;
 
-use crate::{LateLintPass, LintError};
+use crate::{EarlyLintPass, LintError};
 
-pub struct PushBeforeImmVariantInstr;
+pub struct PushBeforeImmVariantInstr {
+    prev_push_instr: Option<(SourceSpan, ImmediateWithoutSpan)>,
+}
 
-impl LateLintPass for PushBeforeImmVariantInstr {
-    fn lint(&mut self, linter: &mut crate::Linter, module: &Module) {
-        for export in module.procedures() {
-            let Export::Procedure(proc) = export else {
-                continue;
-            };
-
-            if let Err(err) = lint_block(proc.body()) {
-                linter.push_error(err);
-            }
-        }
+impl PushBeforeImmVariantInstr {
+    pub fn new() -> Self {
+        Self { prev_push_instr: None }
     }
 }
 
-pub fn lint_block(block: &Block) -> Result<(), LintError> {
-    let mut prev_instr: Option<(SourceSpan, ImmediateWithoutSpan)> = None;
+impl Default for PushBeforeImmVariantInstr {
+    fn default() -> Self {
+        Self::new()
+    }
+}
 
-    for op in block.iter() {
-        if let (Some((prev_span, prev_imm)), Op::Inst(current_instr)) = (prev_instr.take(), op) {
+impl EarlyLintPass for PushBeforeImmVariantInstr {
+    fn lint_instruction(&mut self, linter: &mut crate::Linter, instruction: &Span<Instruction>) {
+        if let (Some((prev_span, prev_imm)), current_instr) =
+            (self.prev_push_instr.take(), instruction)
+        {
             if let Some(alternative) =
                 match_non_immediate_instruction(prev_span, prev_imm, current_instr)
             {
@@ -36,26 +36,28 @@ pub fn lint_block(block: &Block) -> Result<(), LintError> {
                 );
 
                 // Don't return, push error instead and continue.
-                return Err(LintError::PushBeforeInstructionWithImmediateVariant {
+                linter.push_error(LintError::PushBeforeInstructionWithImmediateVariant {
                     span: full_span,
                     alternative,
                 });
             }
         }
 
-        if let Op::Inst(instr) = op {
-            match match_push_instruction(instr) {
-                Some(imm) => {
-                    prev_instr = Some((instr.span(), imm));
-                },
-                None => {
-                    prev_instr = None;
-                },
-            }
+        match match_push_instruction(instruction) {
+            Some(imm) => {
+                self.prev_push_instr = Some((instruction.span(), imm));
+            },
+            None => {
+                self.prev_push_instr = None;
+            },
         }
     }
 
-    Ok(())
+    /// Reset the previous instruction if the block has changed, as the lint will probably not apply
+    /// in those scenarios.
+    fn block_changed(&mut self, _block: &Block) {
+        self.prev_push_instr = None;
+    }
 }
 
 fn match_push_instruction(instruction: &Span<Instruction>) -> Option<ImmediateWithoutSpan> {

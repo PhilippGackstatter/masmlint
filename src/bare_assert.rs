@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use miden_assembly::{
     SourceId, SourceSpan, Span,
-    ast::{Block, Export, Form, Immediate, Instruction, Op},
+    ast::{Immediate, Instruction},
 };
 
 use crate::{LintError, Linter, linter::EarlyLintPass};
@@ -10,38 +10,12 @@ use crate::{LintError, Linter, linter::EarlyLintPass};
 pub struct BareAssert;
 
 impl EarlyLintPass for BareAssert {
-    fn lint(&mut self, linter: &mut Linter, forms: &[Form]) {
-        for form in forms {
-            let Form::Procedure(Export::Procedure(proc)) = form else {
-                continue;
-            };
-
-            lint_block(linter, proc.body());
-        }
-    }
-}
-
-pub fn lint_block(linter: &mut Linter, block: &Block) {
-    for op in block.iter() {
-        match op {
-            Op::If { then_blk, else_blk, .. } => {
-                lint_block(linter, then_blk);
-                lint_block(linter, else_blk);
-            },
-            Op::While { body, .. } => {
-                lint_block(linter, body);
-            },
-            Op::Repeat { body, .. } => {
-                lint_block(linter, body);
-            },
-            Op::Inst(instr) => {
-                if let Some(assert_with_error) = match_assert_instruction(instr) {
-                    linter.push_error(LintError::BareAssert {
-                        span: instr.span(),
-                        assert_with_error,
-                    });
-                }
-            },
+    fn lint_instruction(&mut self, linter: &mut Linter, instruction: &Span<Instruction>) {
+        if let Some(assert_with_error) = match_assert_instruction(instruction) {
+            linter.push_error(LintError::BareAssert {
+                span: instruction.span(),
+                assert_with_error,
+            });
         }
     }
 }

@@ -11,8 +11,9 @@ fn main() -> miette::Result<()> {
 
     let source_file = SourceFile::new(SourceId::new(5), source_path, source_content);
 
-    let late_lints: Vec<Box<dyn LateLintPass>> = vec![Box::new(PushBeforeImmVariantInstr)];
-    let early_lints: Vec<Box<dyn EarlyLintPass>> = vec![Box::new(BareAssert)];
+    let late_lints: Vec<Box<dyn LateLintPass>> = vec![];
+    let early_lints: Vec<Box<dyn EarlyLintPass>> =
+        vec![Box::new(PushBeforeImmVariantInstr::new()), Box::new(BareAssert)];
 
     Linter::new().lint(early_lints, late_lints, ModuleKind::Library, Arc::new(source_file))
 }
