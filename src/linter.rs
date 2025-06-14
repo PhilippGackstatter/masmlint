@@ -5,7 +5,7 @@ use miden_assembly::{
     ast::{Form, Module, ModuleKind},
     testing::TestContext,
 };
-use miette::Context;
+use miette::{Context, Result};
 
 use crate::{LintError, errors::LinterError};
 
@@ -24,7 +24,7 @@ impl Linter {
         late_lints: Vec<Box<dyn LateLintPass>>,
         kind: ModuleKind,
         source: Arc<SourceFile>,
-    ) -> Result<(), Report> {
+    ) -> Result<()> {
         self.early_lint(early_lints, Arc::clone(&source))?;
         self.late_lint(late_lints, kind, Arc::clone(&source))?;
 
@@ -43,7 +43,7 @@ impl Linter {
         &mut self,
         lints: Vec<Box<dyn EarlyLintPass>>,
         source: Arc<SourceFile>,
-    ) -> Result<(), Report> {
+    ) -> Result<()> {
         // This is abusing the miden-assembly testing feature to be able to parse the forms,
         // but there is not other public API to get the forms, unfortunately.
         let forms = TestContext::new()
@@ -62,7 +62,7 @@ impl Linter {
         lints: Vec<Box<dyn LateLintPass>>,
         kind: ModuleKind,
         source: Arc<SourceFile>,
-    ) -> Result<(), Report> {
+    ) -> Result<()> {
         let path = LibraryPath::new("library_path").unwrap();
         let module = ModuleParser::new(kind).parse(path, Arc::clone(&source))?;
 

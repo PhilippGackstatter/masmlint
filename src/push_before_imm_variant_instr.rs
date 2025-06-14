@@ -27,7 +27,9 @@ pub fn lint_block(block: &Block) -> Result<(), LintError> {
 
     for op in block.iter() {
         if let (Some((prev_span, prev_imm)), Op::Inst(current_instr)) = (prev_instr.take(), op) {
-            if let Some(alternative) = match_non_immediate_instruction(prev_imm, current_instr) {
+            if let Some(alternative) =
+                match_non_immediate_instruction(prev_span, prev_imm, current_instr)
+            {
                 let full_span = SourceSpan::new(
                     prev_span.source_id(),
                     prev_span.start()..current_instr.span().end(),
@@ -62,58 +64,78 @@ fn match_push_instruction(instruction: &Span<Instruction>) -> Option<ImmediateWi
         Instruction::PushU16(val) => Some(ImmediateWithoutSpan::Value((*val).into())),
         Instruction::PushU32(val) => Some(ImmediateWithoutSpan::Value((*val).into())),
         Instruction::PushFelt(base_element) => Some(ImmediateWithoutSpan::Value(*base_element)),
-        // Instruction::PushU8List(items) => todo!(),
-        // Instruction::PushU16List(items) => todo!(),
-        // Instruction::PushU32List(items) => todo!(),
-        // Instruction::PushFeltList(base_elements) => todo!(),
+        // It looks like these instructions are never used?
+        Instruction::PushU8List(_items) => None,
+        Instruction::PushU16List(_items) => None,
+        Instruction::PushU32List(_items) => None,
+        Instruction::PushFeltList(_base_elements) => None,
         Instruction::PushWord(_) => None,
         _ => None,
     }
 }
 
+// Some instructions support immediate-style MASM but do not have explicit instruction variants,
+// such as `lt`. When writing `lt.2` in MASM, it is rewritten to `push.2 lt` at parsing time. To
+// differentiate the case when the MASM code contains `push.2 lt` or `lt.2` we can check if the
+// source span of the push instruction is different from the instruction one, which is only the case
+// if it was automatically rewritten.
 fn match_non_immediate_instruction(
+    prev_span: SourceSpan,
     imm: ImmediateWithoutSpan,
     instruction: &Span<Instruction>,
-) -> Option<Instruction> {
-    match instruction.inner() {
-        Instruction::Add => Some(Instruction::AddImm(imm.into_felt())),
-        Instruction::Sub => Some(Instruction::SubImm(imm.into_felt())),
-        Instruction::Mul => Some(Instruction::MulImm(imm.into_felt())),
-        Instruction::Div => Some(Instruction::DivImm(imm.into_felt())),
-        Instruction::Exp => Some(Instruction::ExpImm(imm.into_felt())),
-        Instruction::Eq => Some(Instruction::EqImm(imm.into_felt())),
-        Instruction::Neq => Some(Instruction::NeqImm(imm.into_felt())),
-        // Instruction::Lt => todo!(),
-        // Instruction::Lte => todo!(),
-        // Instruction::Gt => todo!(),
-        // Instruction::Gte => todo!(),
-        Instruction::U32WrappingAdd => Some(Instruction::U32WrappingAddImm(imm.into_u32())),
-        Instruction::U32OverflowingAdd => Some(Instruction::U32OverflowingAddImm(imm.into_u32())),
-        Instruction::U32WrappingSub => Some(Instruction::U32WrappingSubImm(imm.into_u32())),
-        Instruction::U32OverflowingSub => Some(Instruction::U32OverflowingSubImm(imm.into_u32())),
-        Instruction::U32WrappingMul => Some(Instruction::U32WrappingMulImm(imm.into_u32())),
-        Instruction::U32OverflowingMul => Some(Instruction::U32OverflowingMulImm(imm.into_u32())),
-        Instruction::U32Div => Some(Instruction::U32DivImm(imm.into_u32())),
-        Instruction::U32Mod => Some(Instruction::U32ModImm(imm.into_u32())),
-        Instruction::U32DivMod => Some(Instruction::U32DivModImm(imm.into_u32())),
-        // Instruction::U32And => todo!()
-        // Instruction::U32Or => todo!(),
-        // Instruction::U32Xor => todo!(),
-        // Instruction::U32Not => todo!(),
-        // Instruction::U32Shr => todo!(),
-        // Instruction::U32Shl => todo!(),
-        // Instruction::U32Rotr => todo!(),
-        // Instruction::U32Rotl => todo!(),
-        // Instruction::U32Lt => todo!(),
-        // Instruction::U32Lte => todo!(),
-        // Instruction::U32Gt => todo!(),
-        // Instruction::U32Gte => todo!(),
-        // Instruction::U32Min => todo!(),
-        // Instruction::U32Max => todo!(),
-        Instruction::MemLoad => Some(Instruction::MemLoadImm(imm.into_u32())),
-        Instruction::MemLoadW => Some(Instruction::MemLoadWImm(imm.into_u32())),
-        Instruction::MemStore => Some(Instruction::MemStoreImm(imm.into_u32())),
-        Instruction::MemStoreW => Some(Instruction::MemStoreWImm(imm.into_u32())),
+) -> Option<String> {
+    let instr = instruction.inner().clone();
+    match instr {
+        Instruction::Add => Some(Instruction::AddImm(imm.into_felt()).to_string()),
+        Instruction::Sub => Some(Instruction::SubImm(imm.into_felt()).to_string()),
+        Instruction::Mul => Some(Instruction::MulImm(imm.into_felt()).to_string()),
+        Instruction::Div => Some(Instruction::DivImm(imm.into_felt()).to_string()),
+        Instruction::Exp => Some(Instruction::ExpImm(imm.into_felt()).to_string()),
+        Instruction::Eq => Some(Instruction::EqImm(imm.into_felt()).to_string()),
+        Instruction::Neq => Some(Instruction::NeqImm(imm.into_felt()).to_string()),
+        Instruction::Lt if prev_span != instruction.span() => format_instr(instr, imm),
+        Instruction::Lte if prev_span != instruction.span() => format_instr(instr, imm),
+        Instruction::Gt if prev_span != instruction.span() => format_instr(instr, imm),
+        Instruction::Gte if prev_span != instruction.span() => format_instr(instr, imm),
+        Instruction::U32WrappingAdd => {
+            Some(Instruction::U32WrappingAddImm(imm.into_u32()).to_string())
+        },
+        Instruction::U32OverflowingAdd => {
+            Some(Instruction::U32OverflowingAddImm(imm.into_u32()).to_string())
+        },
+        Instruction::U32WrappingSub => {
+            Some(Instruction::U32WrappingSubImm(imm.into_u32()).to_string())
+        },
+        Instruction::U32OverflowingSub => {
+            Some(Instruction::U32OverflowingSubImm(imm.into_u32()).to_string())
+        },
+        Instruction::U32WrappingMul => {
+            Some(Instruction::U32WrappingMulImm(imm.into_u32()).to_string())
+        },
+        Instruction::U32OverflowingMul => {
+            Some(Instruction::U32OverflowingMulImm(imm.into_u32()).to_string())
+        },
+        Instruction::U32Div => Some(Instruction::U32DivImm(imm.into_u32()).to_string()),
+        Instruction::U32Mod => Some(Instruction::U32ModImm(imm.into_u32()).to_string()),
+        Instruction::U32DivMod => Some(Instruction::U32DivModImm(imm.into_u32()).to_string()),
+        Instruction::U32And if prev_span != instruction.span() => format_instr(instr, imm),
+        Instruction::U32Or if prev_span != instruction.span() => format_instr(instr, imm),
+        Instruction::U32Xor if prev_span != instruction.span() => format_instr(instr, imm),
+        Instruction::U32Not if prev_span != instruction.span() => format_instr(instr, imm),
+        Instruction::U32Shr if prev_span != instruction.span() => format_instr(instr, imm),
+        Instruction::U32Shl if prev_span != instruction.span() => format_instr(instr, imm),
+        Instruction::U32Rotr if prev_span != instruction.span() => format_instr(instr, imm),
+        Instruction::U32Rotl if prev_span != instruction.span() => format_instr(instr, imm),
+        Instruction::U32Lt if prev_span != instruction.span() => format_instr(instr, imm),
+        Instruction::U32Lte if prev_span != instruction.span() => format_instr(instr, imm),
+        Instruction::U32Gt if prev_span != instruction.span() => format_instr(instr, imm),
+        Instruction::U32Gte if prev_span != instruction.span() => format_instr(instr, imm),
+        Instruction::U32Min if prev_span != instruction.span() => format_instr(instr, imm),
+        Instruction::U32Max if prev_span != instruction.span() => format_instr(instr, imm),
+        Instruction::MemLoad => Some(Instruction::MemLoadImm(imm.into_u32()).to_string()),
+        Instruction::MemLoadW => Some(Instruction::MemLoadWImm(imm.into_u32()).to_string()),
+        Instruction::MemStore => Some(Instruction::MemStoreImm(imm.into_u32()).to_string()),
+        Instruction::MemStoreW => Some(Instruction::MemStoreWImm(imm.into_u32()).to_string()),
         _ => None,
     }
 }
@@ -153,4 +175,8 @@ impl From<Immediate<Felt>> for ImmediateWithoutSpan {
             Immediate::Constant(ident) => ImmediateWithoutSpan::Constant(ident),
         }
     }
+}
+
+fn format_instr(instr: Instruction, imm: ImmediateWithoutSpan) -> Option<String> {
+    Some(format!("{}.{}", instr, imm.into_felt()))
 }

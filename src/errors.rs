@@ -1,4 +1,4 @@
-use miden_assembly::{SourceSpan, ast::Instruction};
+use miden_assembly::SourceSpan;
 use miette::Diagnostic;
 
 #[derive(Debug, thiserror::Error, Diagnostic)]
@@ -8,7 +8,7 @@ pub enum LintError {
     PushBeforeNonImmediateInstruction {
         #[label]
         span: SourceSpan,
-        alternative: Instruction,
+        alternative: String,
     },
 }
 

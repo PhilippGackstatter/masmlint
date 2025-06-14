@@ -3,7 +3,7 @@ use std::sync::Arc;
 use masmlint::{EarlyLintPass, LateLintPass, Linter, PushBeforeImmVariantInstr};
 use miden_assembly::{SourceFile, SourceId, ast::ModuleKind};
 
-fn main() -> Result<(), miden_assembly::Report> {
+fn main() -> miette::Result<()> {
     let source_path = std::env::args().nth(1).unwrap();
 
     let source = std::fs::read(&source_path).unwrap();
