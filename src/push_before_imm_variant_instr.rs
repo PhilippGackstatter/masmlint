@@ -1,17 +1,17 @@
 use miden_assembly::{
     SourceId, SourceSpan, Span,
-    ast::{Block, Export, Form, Ident, Immediate, Instruction, Op},
+    ast::{Block, Export, Ident, Immediate, Instruction, Module, Op},
 };
 use miden_core::Felt;
 
-use crate::{LintError, linter::EarlyLintPass};
+use crate::{LateLintPass, LintError};
 
 pub struct PushBeforeImmVariantInstr;
 
-impl EarlyLintPass for PushBeforeImmVariantInstr {
-    fn lint(&mut self, linter: &mut crate::Linter, forms: &[Form]) {
-        for form in forms {
-            let Form::Procedure(Export::Procedure(proc)) = form else {
+impl LateLintPass for PushBeforeImmVariantInstr {
+    fn lint(&mut self, linter: &mut crate::Linter, module: &Module) {
+        for export in module.procedures() {
+            let Export::Procedure(proc) = export else {
                 continue;
             };
 
@@ -35,7 +35,8 @@ pub fn lint_block(block: &Block) -> Result<(), LintError> {
                     prev_span.start()..current_instr.span().end(),
                 );
 
-                return Err(LintError::PushBeforeNonImmediateInstruction {
+                // Don't return, push error instead and continue.
+                return Err(LintError::PushBeforeInstructionWithImmediateVariant {
                     span: full_span,
                     alternative,
                 });
