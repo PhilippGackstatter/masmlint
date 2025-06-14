@@ -1,6 +1,9 @@
 use std::sync::Arc;
 
-use masmlint::{BareAssert, EarlyLintPass, Linter, PushBeforeImmVariantInstr};
+use masmlint::{
+    EarlyLintPass, Linter,
+    lints::{BareAssert, PushBeforeImmVariantInstr},
+};
 use miden_assembly::{SourceFile, SourceId};
 
 fn main() -> miette::Result<()> {

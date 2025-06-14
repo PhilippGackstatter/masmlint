@@ -3,11 +3,7 @@ extern crate alloc;
 mod errors;
 pub use errors::LintError;
 
-mod push_before_imm_variant_instr;
-pub use push_before_imm_variant_instr::PushBeforeImmVariantInstr;
-
-mod bare_assert;
-pub use bare_assert::BareAssert;
+pub mod lints;
 
 mod linter;
 pub use linter::{EarlyLintPass, Linter};

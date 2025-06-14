@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use miden_assembly::{
     Report, SourceFile, Span,
-    ast::{Block, Export, Form, Instruction, ModuleKind, Op},
+    ast::{Block, Export, Form, Instruction, Op},
     testing::TestContext,
 };
 use miette::{Context, Result};
