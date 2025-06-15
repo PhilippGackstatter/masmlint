@@ -6,6 +6,7 @@ use std::{
     sync::Arc,
 };
 
+use clap::Parser;
 use masmlint::{
     EarlyLintPass, Linter,
     lints::{BareAssert, PushImmediate},
@@ -13,10 +14,18 @@ use masmlint::{
 use miden_assembly::{SourceFile, SourceId};
 use miette::Report;
 
+/// A linter for Miden Assembly.
+#[derive(clap::Parser, Debug)]
+#[command(version, about, long_about = None)]
+struct Args {
+    /// Path to a MASM file to lint or a directory of MASM files. If a directory is given, it is
+    /// searched recursively and lints all MASM files that are found.
+    path: String,
+}
+
 fn main() -> miette::Result<()> {
-    let source_path = std::env::args().nth(1).ok_or_else(|| {
-        Report::msg("expected first cli argument to be a path to a .masm file or a directory")
-    })?;
+    let args = Args::parse();
+    let source_path = args.path;
     let source_path = Path::new(&source_path)
         .canonicalize()
         .map_err(|err| Report::msg(format!("{err}")))?;
@@ -58,7 +67,7 @@ fn main() -> miette::Result<()> {
     if errors.is_empty() {
         Ok(())
     } else {
-        Err(LinterErrors { errors }.into())
+        Err(LinterReports { errors }.into())
     }
 }
 
@@ -116,7 +125,7 @@ fn is_masm_file(path: &Path) -> io::Result<bool> {
 
 #[derive(Debug, thiserror::Error, miette::Diagnostic)]
 #[error("one or more files have failed lints")]
-pub struct LinterErrors {
+pub struct LinterReports {
     #[related]
     errors: Vec<Report>,
 }
