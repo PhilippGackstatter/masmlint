@@ -8,7 +8,7 @@ use std::{
 
 use clap::Parser;
 use masmlint::{
-    EarlyLintPass, Linter,
+    EarlyLintPass, Linter, LinterError,
     lints::{BareAssert, PushImmediate},
 };
 use miden_assembly::{SourceFile, SourceId};
@@ -127,5 +127,5 @@ fn is_masm_file(path: &Path) -> io::Result<bool> {
 #[error("one or more files have failed lints")]
 pub struct LinterReports {
     #[related]
-    errors: Vec<Report>,
+    errors: Vec<LinterError>,
 }

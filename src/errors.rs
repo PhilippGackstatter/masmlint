@@ -1,4 +1,6 @@
-use miden_assembly::{SourceSpan, ast::Instruction};
+use std::sync::Arc;
+
+use miden_assembly::{SourceFile, SourceSpan, ast::Instruction};
 use miette::Diagnostic;
 
 #[derive(Debug, thiserror::Error, Diagnostic)]
@@ -9,6 +11,8 @@ pub enum LintError {
         #[label("instruction can be rewritten to take the immediate directly")]
         span: SourceSpan,
         alternative: String,
+        #[source_code]
+        source_file: Arc<SourceFile>,
     },
     #[error("assert without error message")]
     #[diagnostic(help(
@@ -18,18 +22,24 @@ pub enum LintError {
         #[label("does not include an error message")]
         span: SourceSpan,
         assert_with_error: Instruction,
+        #[source_code]
+        source_file: Arc<SourceFile>,
     },
 }
 
 #[derive(Debug, thiserror::Error, Diagnostic)]
-#[error("one or more lints failed")]
-pub struct LinterError {
-    #[related]
-    errors: Vec<LintError>,
+pub enum LinterError {
+    #[error("one or more lints failed")]
+    Lints {
+        #[related]
+        errors: Vec<LintError>,
+    },
+    #[error("failed to parse MASM into forms: {0}")]
+    FormsParsing(String),
 }
 
 impl LinterError {
-    pub fn new(errors: Vec<LintError>) -> Self {
-        Self { errors }
+    pub fn new_lints(errors: Vec<LintError>) -> Self {
+        Self::Lints { errors }
     }
 }

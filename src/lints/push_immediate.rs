@@ -4,7 +4,7 @@ use miden_assembly::{
 };
 use miden_core::Felt;
 
-use crate::{EarlyLintPass, LintError};
+use crate::{EarlyContext, EarlyLintPass, LintError};
 
 pub struct PushImmediate {
     prev_push_instr: Option<(SourceSpan, ImmediateWithoutSpan)>,
@@ -23,7 +23,11 @@ impl Default for PushImmediate {
 }
 
 impl EarlyLintPass for PushImmediate {
-    fn lint_instruction(&mut self, linter: &mut crate::Linter, instruction: &Span<Instruction>) {
+    fn lint_instruction(
+        &mut self,
+        early_ctx: &mut EarlyContext<'_>,
+        instruction: &Span<Instruction>,
+    ) {
         if let (Some((prev_span, prev_imm)), current_instr) =
             (self.prev_push_instr.take(), instruction)
         {
@@ -35,7 +39,11 @@ impl EarlyLintPass for PushImmediate {
                     prev_span.start()..current_instr.span().end(),
                 );
 
-                linter.push_error(LintError::PushImmediate { span: full_span, alternative });
+                early_ctx.push_error(LintError::PushImmediate {
+                    span: full_span,
+                    alternative,
+                    source_file: early_ctx.source_file(),
+                });
             }
         }
 

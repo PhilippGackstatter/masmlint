@@ -5,16 +5,21 @@ use miden_assembly::{
     ast::{Immediate, Instruction},
 };
 
-use crate::{LintError, Linter, linter::EarlyLintPass};
+use crate::{EarlyContext, LintError, linter::EarlyLintPass};
 
 pub struct BareAssert;
 
 impl EarlyLintPass for BareAssert {
-    fn lint_instruction(&mut self, linter: &mut Linter, instruction: &Span<Instruction>) {
+    fn lint_instruction(
+        &mut self,
+        early_ctx: &mut EarlyContext<'_>,
+        instruction: &Span<Instruction>,
+    ) {
         if let Some(assert_with_error) = match_assert_instruction(instruction) {
-            linter.push_error(LintError::BareAssert {
+            early_ctx.push_error(LintError::BareAssert {
                 span: instruction.span(),
                 assert_with_error,
+                source_file: early_ctx.source_file(),
             });
         }
     }
