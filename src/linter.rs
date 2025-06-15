@@ -10,19 +10,18 @@ use miden_assembly::{
 use crate::{LintError, errors::LinterError};
 
 pub struct Linter {
+    lints: Vec<Box<dyn EarlyLintPass>>,
     errors: Vec<LintError>,
 }
 
 impl Linter {
-    pub fn new() -> Self {
-        Self { errors: Vec::new() }
+    pub fn new(lints: Vec<Box<dyn EarlyLintPass>>) -> Self {
+        Self { lints, errors: Vec::new() }
     }
 
-    pub fn lint(
-        mut self,
-        early_lints: Vec<Box<dyn EarlyLintPass>>,
-        source: Arc<SourceFile>,
-    ) -> Result<(), LinterError> {
+    pub fn lint(mut self, source: Arc<SourceFile>) -> Result<(), LinterError> {
+        let early_lints = core::mem::take(&mut self.lints);
+
         self.early_lint(early_lints, Arc::clone(&source))?;
 
         let errors = core::mem::take(&mut self.errors);
@@ -60,12 +59,6 @@ impl Linter {
 
     fn push_error(&mut self, error: LintError) {
         self.errors.push(error);
-    }
-}
-
-impl Default for Linter {
-    fn default() -> Self {
-        Self::new()
     }
 }
 

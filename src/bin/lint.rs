@@ -7,10 +7,7 @@ use std::{
 };
 
 use clap::Parser;
-use masmlint::{
-    EarlyLintPass, Linter, LinterError,
-    lints::{BareAssert, PushImmediate},
-};
+use masmlint::{self, LintSelector, Linter, LinterError};
 use miden_assembly::{SourceFile, SourceId};
 use miette::Report;
 
@@ -57,10 +54,9 @@ fn main() -> miette::Result<()> {
             .expect("system limit: source manager has exhausted its supply of source ids");
         let source_file = SourceFile::new(id, file_name, source_content);
 
-        let early_lints: Vec<Box<dyn EarlyLintPass>> =
-            vec![Box::new(PushImmediate::new()), Box::new(BareAssert)];
+        let lints = LintSelector::default().select()?;
 
-        match Linter::new().lint(early_lints, Arc::new(source_file)) {
+        match Linter::new(lints).lint(Arc::new(source_file)) {
             Ok(_) => (),
             Err(LinterError::Lints { errors }) => {
                 lint_errors.extend(errors);

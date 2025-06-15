@@ -9,6 +9,10 @@ use crate::{EarlyContext, LintError, linter::EarlyLintPass};
 
 pub struct BareAssert;
 
+impl BareAssert {
+    pub const NAME: &'static str = "bare_assert";
+}
+
 impl EarlyLintPass for BareAssert {
     fn lint_instruction(
         &mut self,

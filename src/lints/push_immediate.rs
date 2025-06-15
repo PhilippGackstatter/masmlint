@@ -11,6 +11,8 @@ pub struct PushImmediate {
 }
 
 impl PushImmediate {
+    pub const NAME: &'static str = "push_immediate";
+
     pub fn new() -> Self {
         Self { prev_push_instr: None }
     }

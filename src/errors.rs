@@ -36,6 +36,10 @@ pub enum LinterError {
     },
     #[error("failed to parse MASM into forms: {0}")]
     FormsParsing(String),
+    #[error("failed to select unknown lint `{0}`")]
+    UnknownSelectedLint(String),
+    #[error("failed to exclude unknown lint `{0}`")]
+    UnknownExcludedLint(String),
 }
 
 impl LinterError {
