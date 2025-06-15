@@ -2,7 +2,7 @@
 name = "masmlint"
 description = "A linter for Miden Assembly"
 authors = ["PhilippGackstatter"]
-version = "0.1.0"
+version = "0.1.1"
 edition = "2024"
 categories = ["development-tools", "cryptography::cryptocurrencies"]
 license = "MIT"
