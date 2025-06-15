@@ -17,10 +17,12 @@ fn main() -> miette::Result<()> {
     let source_path = std::env::args().nth(1).ok_or_else(|| {
         Report::msg("expected first cli argument to be a path to a .masm file or a directory")
     })?;
-    let source_path = Path::new(&source_path);
+    let source_path = Path::new(&source_path)
+        .canonicalize()
+        .map_err(|err| Report::msg(format!("{err}")))?;
 
     let masm_files = if source_path.is_dir() {
-        get_masm_files(source_path).map_err(|err| {
+        get_masm_files(source_path.as_path()).map_err(|err| {
             Report::msg(format!(
                 "failed to get masm files from directory {}: {err}",
                 source_path.display()
@@ -37,7 +39,10 @@ fn main() -> miette::Result<()> {
         let source_content = String::from_utf8(source)
             .map_err(|err| Report::msg(format!("failed to decode file as UTF-8: {err}")))?;
 
-        let file_name = format!("{}", file.display());
+        let relative_file_path = file
+            .strip_prefix(source_path.as_path())
+            .expect("file should contain source path as a prefix");
+        let file_name = format!("{}", relative_file_path.display());
         let id = SourceId::try_from(file_idx)
             .expect("system limit: source manager has exhausted its supply of source ids");
         let source_file = SourceFile::new(id, file_name, source_content);
@@ -58,7 +63,8 @@ fn main() -> miette::Result<()> {
     }
 }
 
-/// Returns a vector with paths to all MASM files in the specified directory.
+/// Returns a vector with paths to all MASM files in the specified directory and recursive
+/// directories.
 ///
 /// All non-MASM files are skipped.
 fn get_masm_files<P: AsRef<Path>>(dir_path: P) -> io::Result<Vec<PathBuf>> {
