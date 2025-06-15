@@ -6,6 +6,7 @@ version = "0.1.0"
 edition = "2024"
 categories = ["lint"]
 license = "MIT"
+repository = "https://github.com/PhilippGackstatter/masmlint"
 
 [dependencies]
 miden-assembly = { version = "0.15", default-features = false, features = [
