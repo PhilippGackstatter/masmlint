@@ -1,14 +1,18 @@
 [package]
 name = "masmlint"
+description = "A linter for Miden Assembly"
+authors = ["PhilippGackstatter"]
 version = "0.1.0"
 edition = "2024"
+categories = ["lint"]
+license = "MIT"
 
 [dependencies]
 miden-assembly = { version = "0.15", default-features = false, features = [
   "testing",
 ] }
 miden-core = { version = "0.15", default-features = false }
-thiserror = "1"
+thiserror = "2"
 miette = { package = "miden-miette", version = "8.0", default-features = false, features = [
   "fancy-no-syscall",
   "derive",
