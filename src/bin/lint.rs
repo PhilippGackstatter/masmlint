@@ -40,6 +40,9 @@ fn main() -> miette::Result<()> {
 
     let mut lint_errors = Vec::new();
 
+    let lints = LintSelector::default().select()?;
+    let mut linter = Linter::new(lints);
+
     for (file_idx, file) in masm_files.into_iter().enumerate() {
         let source = std::fs::read(&file)
             .map_err(|err| Report::msg(format!("failed to open file {}: {err}", file.display())))?;
@@ -54,9 +57,7 @@ fn main() -> miette::Result<()> {
             .expect("system limit: source manager has exhausted its supply of source ids");
         let source_file = SourceFile::new(id, file_name, source_content);
 
-        let lints = LintSelector::default().select()?;
-
-        match Linter::new(lints).lint(Arc::new(source_file)) {
+        match linter.lint(Arc::new(source_file)) {
             Ok(_) => (),
             Err(LinterError::Lints { errors }) => {
                 lint_errors.extend(errors);

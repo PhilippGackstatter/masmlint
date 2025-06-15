@@ -25,11 +25,7 @@ impl Default for PushImmediate {
 }
 
 impl EarlyLintPass for PushImmediate {
-    fn lint_instruction(
-        &mut self,
-        early_ctx: &mut EarlyContext<'_>,
-        instruction: &Span<Instruction>,
-    ) {
+    fn lint_instruction(&mut self, early_ctx: &mut EarlyContext, instruction: &Span<Instruction>) {
         if let (Some((prev_span, prev_imm)), current_instr) =
             (self.prev_push_instr.take(), instruction)
         {

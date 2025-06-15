@@ -19,10 +19,8 @@ impl Linter {
         Self { lints, errors: Vec::new() }
     }
 
-    pub fn lint(mut self, source: Arc<SourceFile>) -> Result<(), LinterError> {
-        let early_lints = core::mem::take(&mut self.lints);
-
-        self.early_lint(early_lints, Arc::clone(&source))?;
+    pub fn lint(&mut self, source: Arc<SourceFile>) -> Result<(), LinterError> {
+        self.early_lint(Arc::clone(&source))?;
 
         let errors = core::mem::take(&mut self.errors);
 
@@ -33,41 +31,38 @@ impl Linter {
         }
     }
 
-    fn early_lint(
-        &mut self,
-        mut lints: Vec<Box<dyn EarlyLintPass>>,
-        source_file: Arc<SourceFile>,
-    ) -> Result<(), LinterError> {
+    fn early_lint(&mut self, source_file: Arc<SourceFile>) -> Result<(), LinterError> {
         // This is abusing the miden-assembly testing feature to be able to parse the forms,
         // but there is no other public API to get the forms, unfortunately.
         let forms = TestContext::new()
             .parse_forms(Arc::clone(&source_file))
             .map_err(|err| LinterError::FormsParsing(PrintDiagnostic::new(err).to_string()))?;
 
-        let mut early_ctx = EarlyContext { linter: self, source_file };
+        let errors = core::mem::take(&mut self.errors);
+
+        let mut early_ctx = EarlyContext { errors, source_file };
 
         for form in forms {
             let Form::Procedure(Export::Procedure(proc)) = form else {
                 continue;
             };
 
-            early_ctx.lint_block(proc.body(), &mut lints);
+            early_ctx.lint_block(proc.body(), self.lints.as_mut_slice());
         }
+
+        // Put the errors back into the field.
+        core::mem::swap(&mut early_ctx.errors, &mut self.errors);
 
         Ok(())
     }
-
-    fn push_error(&mut self, error: LintError) {
-        self.errors.push(error);
-    }
 }
 
-pub struct EarlyContext<'linter> {
-    linter: &'linter mut Linter,
+pub struct EarlyContext {
+    errors: Vec<LintError>,
     source_file: Arc<SourceFile>,
 }
 
-impl<'linter> EarlyContext<'linter> {
+impl EarlyContext {
     fn lint_block(&mut self, block: &Block, lints: &mut [Box<dyn EarlyLintPass>]) {
         for lint in lints.iter_mut() {
             lint.block_changed(block);
@@ -95,7 +90,7 @@ impl<'linter> EarlyContext<'linter> {
     }
 
     pub fn push_error(&mut self, error: LintError) {
-        self.linter.push_error(error);
+        self.errors.push(error);
     }
 
     pub fn source_file(&self) -> Arc<SourceFile> {
@@ -104,10 +99,6 @@ impl<'linter> EarlyContext<'linter> {
 }
 
 pub trait EarlyLintPass {
-    fn lint_instruction(
-        &mut self,
-        early_ctx: &mut EarlyContext<'_>,
-        instruction: &Span<Instruction>,
-    );
+    fn lint_instruction(&mut self, early_ctx: &mut EarlyContext, instruction: &Span<Instruction>);
     fn block_changed(&mut self, _block: &Block) {}
 }

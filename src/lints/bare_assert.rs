@@ -14,11 +14,7 @@ impl BareAssert {
 }
 
 impl EarlyLintPass for BareAssert {
-    fn lint_instruction(
-        &mut self,
-        early_ctx: &mut EarlyContext<'_>,
-        instruction: &Span<Instruction>,
-    ) {
+    fn lint_instruction(&mut self, early_ctx: &mut EarlyContext, instruction: &Span<Instruction>) {
         if let Some(assert_with_error) = match_assert_instruction(instruction) {
             early_ctx.push_error(LintError::BareAssert {
                 span: instruction.span(),
