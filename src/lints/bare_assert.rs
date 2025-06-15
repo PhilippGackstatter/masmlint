@@ -39,6 +39,7 @@ fn match_assert_instruction(instruction: &Span<Instruction>) -> Option<Instructi
         Instruction::U32Assert => Some(Instruction::U32AssertWithError(example_msg)),
         Instruction::U32Assert2 => Some(Instruction::U32Assert2WithError(example_msg)),
         Instruction::U32AssertW => Some(Instruction::U32AssertWWithError(example_msg)),
+        Instruction::MTreeVerify => Some(Instruction::MTreeVerifyWithError(example_msg)),
         _ => None,
     }
 }
