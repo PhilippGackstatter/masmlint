@@ -11,7 +11,7 @@ use crate::{
 pub enum LintSelector {
     #[default]
     All,
-    Include(Vec<String>),
+    Select(Vec<String>),
     Exclude(Vec<String>),
 }
 
@@ -20,7 +20,7 @@ impl LintSelector {
         let mut lints = all_lints();
         match self {
             LintSelector::All => Ok(lints.into_values().collect()),
-            LintSelector::Include(selected) => {
+            LintSelector::Select(selected) => {
                 let mut selected_lints = Vec::new();
 
                 for selected_lint in selected {

@@ -18,6 +18,16 @@ struct Args {
     /// Path to a MASM file to lint or a directory of MASM files. If a directory is given, it is
     /// searched recursively and lints all MASM files that are found.
     path: String,
+
+    /// Comma-separated list of lint names to exclude. These will be excluded from the default list
+    /// of lints.
+    #[arg(short, long, value_delimiter = ',', use_value_delimiter = true)]
+    exclude: Vec<String>,
+
+    /// Comma-separated list of lint names to run. This list is exhaustive; no other lints will be
+    /// run.
+    #[arg(short, long, value_delimiter = ',', use_value_delimiter = true)]
+    select: Vec<String>,
 }
 
 fn main() -> miette::Result<()> {
@@ -38,7 +48,20 @@ fn main() -> miette::Result<()> {
         vec![source_path.to_owned()]
     };
 
-    let lints = LintSelector::default().select()?;
+    if !args.exclude.is_empty() && !args.select.is_empty() {
+        return Err(Report::msg("cannot use include and exclude argument at the same time"));
+    }
+
+    let selector = if !args.exclude.is_empty() {
+        LintSelector::Exclude(args.exclude)
+    } else if !args.select.is_empty() {
+        LintSelector::Select(args.select)
+    } else {
+        LintSelector::default()
+    };
+
+    let lints = selector.select()?;
+
     let mut linter = Linter::new(lints);
 
     for (file_idx, file) in masm_files.into_iter().enumerate() {
