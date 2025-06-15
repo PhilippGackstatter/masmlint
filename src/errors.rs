@@ -32,12 +32,4 @@ impl LinterError {
     pub fn new(errors: Vec<LintError>) -> Self {
         Self { errors }
     }
-
-    pub fn is_empty(&self) -> bool {
-        self.errors.is_empty()
-    }
-
-    pub fn extend(&mut self, other: LinterError) {
-        self.errors.extend(other.errors);
-    }
 }
