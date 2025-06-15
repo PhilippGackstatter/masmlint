@@ -1,7 +1,7 @@
 extern crate alloc;
 
 mod errors;
-pub use errors::LintError;
+pub use errors::{LintError, LinterError};
 
 pub mod lints;
 
