@@ -3,9 +3,9 @@ use std::sync::Arc;
 use miden_assembly::{
     SourceFile, Span,
     ast::{Block, Export, Form, Instruction, Op},
-    diagnostics::reporting::PrintDiagnostic,
     testing::TestContext,
 };
+use miette::{Context, Result};
 
 use crate::{LintError, errors::LinterError};
 
@@ -19,9 +19,11 @@ impl Linter {
         Self { lints, errors: Vec::new() }
     }
 
-    pub fn lint(&mut self, source: Arc<SourceFile>) -> Result<(), LinterError> {
-        self.early_lint(Arc::clone(&source))?;
+    pub fn lint(&mut self, source: Arc<SourceFile>) -> Result<()> {
+        self.early_lint(Arc::clone(&source))
+    }
 
+    pub fn finish(mut self) -> Result<(), LinterError> {
         let errors = core::mem::take(&mut self.errors);
 
         if errors.is_empty() {
@@ -31,12 +33,12 @@ impl Linter {
         }
     }
 
-    fn early_lint(&mut self, source_file: Arc<SourceFile>) -> Result<(), LinterError> {
+    fn early_lint(&mut self, source_file: Arc<SourceFile>) -> Result<()> {
         // This is abusing the miden-assembly testing feature to be able to parse the forms,
         // but there is no other public API to get the forms, unfortunately.
         let forms = TestContext::new()
             .parse_forms(Arc::clone(&source_file))
-            .map_err(|err| LinterError::FormsParsing(PrintDiagnostic::new(err).to_string()))?;
+            .context("failed to parse forms")?;
 
         let errors = core::mem::take(&mut self.errors);
 

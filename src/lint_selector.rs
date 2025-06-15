@@ -1,7 +1,9 @@
 use std::collections::BTreeMap;
 
+use miette::{Report, Result};
+
 use crate::{
-    EarlyLintPass, LinterError,
+    EarlyLintPass,
     lints::{BareAssert, PushImmediate},
 };
 
@@ -14,7 +16,7 @@ pub enum LintSelector {
 }
 
 impl LintSelector {
-    pub fn select(self) -> Result<Vec<Box<dyn EarlyLintPass>>, LinterError> {
+    pub fn select(self) -> Result<Vec<Box<dyn EarlyLintPass>>> {
         let mut lints = all_lints();
         match self {
             LintSelector::All => Ok(lints.into_values().collect()),
@@ -22,9 +24,9 @@ impl LintSelector {
                 let mut selected_lints = Vec::new();
 
                 for selected_lint in selected {
-                    let lint = lints
-                        .remove(selected_lint.as_str())
-                        .ok_or_else(|| LinterError::UnknownSelectedLint(selected_lint))?;
+                    let lint = lints.remove(selected_lint.as_str()).ok_or_else(|| {
+                        Report::msg(format!("failed to select unknown lint `{selected_lint}`"))
+                    })?;
                     selected_lints.push(lint);
                 }
 
@@ -32,9 +34,9 @@ impl LintSelector {
             },
             LintSelector::Exclude(excluded) => {
                 for excluded_lint in excluded {
-                    lints
-                        .remove(excluded_lint.as_str())
-                        .ok_or_else(|| LinterError::UnknownExcludedLint(excluded_lint))?;
+                    lints.remove(excluded_lint.as_str()).ok_or_else(|| {
+                        Report::msg(format!("failed to exclude unknown lint `{excluded_lint}`"))
+                    })?;
                 }
 
                 Ok(lints.into_values().collect())

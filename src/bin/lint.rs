@@ -7,7 +7,7 @@ use std::{
 };
 
 use clap::Parser;
-use masmlint::{self, LintSelector, Linter, LinterError};
+use masmlint::{self, LintSelector, Linter};
 use miden_assembly::{SourceFile, SourceId};
 use miette::Report;
 
@@ -38,8 +38,6 @@ fn main() -> miette::Result<()> {
         vec![source_path.to_owned()]
     };
 
-    let mut lint_errors = Vec::new();
-
     let lints = LintSelector::default().select()?;
     let mut linter = Linter::new(lints);
 
@@ -57,20 +55,10 @@ fn main() -> miette::Result<()> {
             .expect("system limit: source manager has exhausted its supply of source ids");
         let source_file = SourceFile::new(id, file_name, source_content);
 
-        match linter.lint(Arc::new(source_file)) {
-            Ok(_) => (),
-            Err(LinterError::Lints { errors }) => {
-                lint_errors.extend(errors);
-            },
-            Err(err) => return Err(Report::from(err)),
-        }
+        linter.lint(Arc::new(source_file))?;
     }
 
-    if lint_errors.is_empty() {
-        Ok(())
-    } else {
-        Err(LinterError::Lints { errors: lint_errors }.into())
-    }
+    linter.finish().map_err(Report::from)
 }
 
 /// Returns a vector with paths to all MASM files in the specified directory and recursive

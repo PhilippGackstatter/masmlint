@@ -28,22 +28,18 @@ pub enum LintError {
 }
 
 #[derive(Debug, thiserror::Error, Diagnostic)]
-pub enum LinterError {
-    #[error("one or more lints failed")]
-    Lints {
-        #[related]
-        errors: Vec<LintError>,
-    },
-    #[error("failed to parse MASM into forms: {0}")]
-    FormsParsing(String),
-    #[error("failed to select unknown lint `{0}`")]
-    UnknownSelectedLint(String),
-    #[error("failed to exclude unknown lint `{0}`")]
-    UnknownExcludedLint(String),
+#[error("one or more lints failed")]
+pub struct LinterError {
+    #[related]
+    errors: Vec<LintError>,
+    // #[error("failed to select unknown lint `{0}`")]
+    // UnknownSelectedLint(String),
+    // #[error("failed to exclude unknown lint `{0}`")]
+    // UnknownExcludedLint(String),
 }
 
 impl LinterError {
     pub fn new_lints(errors: Vec<LintError>) -> Self {
-        Self::Lints { errors }
+        Self { errors }
     }
 }
