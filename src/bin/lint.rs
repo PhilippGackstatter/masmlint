@@ -41,7 +41,8 @@ fn main() -> miette::Result<()> {
         vec![source_path.to_owned()]
     };
 
-    let mut errors = vec![];
+    let mut lint_errors = Vec::new();
+
     for (file_idx, file) in masm_files.into_iter().enumerate() {
         let source = std::fs::read(&file)
             .map_err(|err| Report::msg(format!("failed to open file {}: {err}", file.display())))?;
@@ -59,15 +60,19 @@ fn main() -> miette::Result<()> {
         let early_lints: Vec<Box<dyn EarlyLintPass>> =
             vec![Box::new(PushImmediate::new()), Box::new(BareAssert)];
 
-        if let Err(err) = Linter::new().lint(early_lints, Arc::new(source_file)) {
-            errors.push(err);
+        match Linter::new().lint(early_lints, Arc::new(source_file)) {
+            Ok(_) => (),
+            Err(LinterError::Lints { errors }) => {
+                lint_errors.extend(errors);
+            },
+            Err(err) => return Err(Report::from(err)),
         }
     }
 
-    if errors.is_empty() {
+    if lint_errors.is_empty() {
         Ok(())
     } else {
-        Err(LinterReports { errors }.into())
+        Err(LinterError::Lints { errors: lint_errors }.into())
     }
 }
 
@@ -121,11 +126,4 @@ fn is_masm_file(path: &Path) -> io::Result<bool> {
     } else {
         Ok(false)
     }
-}
-
-#[derive(Debug, thiserror::Error, miette::Diagnostic)]
-#[error("one or more files have failed lints")]
-pub struct LinterReports {
-    #[related]
-    errors: Vec<LinterError>,
 }
