@@ -6,23 +6,23 @@ use miden_core::Felt;
 
 use crate::{EarlyLintPass, LintError};
 
-pub struct PushBeforeImmVariantInstr {
+pub struct PushImmediate {
     prev_push_instr: Option<(SourceSpan, ImmediateWithoutSpan)>,
 }
 
-impl PushBeforeImmVariantInstr {
+impl PushImmediate {
     pub fn new() -> Self {
         Self { prev_push_instr: None }
     }
 }
 
-impl Default for PushBeforeImmVariantInstr {
+impl Default for PushImmediate {
     fn default() -> Self {
         Self::new()
     }
 }
 
-impl EarlyLintPass for PushBeforeImmVariantInstr {
+impl EarlyLintPass for PushImmediate {
     fn lint_instruction(&mut self, linter: &mut crate::Linter, instruction: &Span<Instruction>) {
         if let (Some((prev_span, prev_imm)), current_instr) =
             (self.prev_push_instr.take(), instruction)
@@ -35,10 +35,7 @@ impl EarlyLintPass for PushBeforeImmVariantInstr {
                     prev_span.start()..current_instr.span().end(),
                 );
 
-                linter.push_error(LintError::PushBeforeInstructionWithImmediateVariant {
-                    span: full_span,
-                    alternative,
-                });
+                linter.push_error(LintError::PushImmediate { span: full_span, alternative });
             }
         }
 
@@ -52,8 +49,8 @@ impl EarlyLintPass for PushBeforeImmVariantInstr {
         }
     }
 
-    /// Reset the previous instruction if the block has changed, as the lint will probably not apply
-    /// in those scenarios.
+    /// Reset the previous instruction if the block has changed, as the lint might not apply across
+    /// block boundaries.
     fn block_changed(&mut self, _block: &Block) {
         self.prev_push_instr = None;
     }
@@ -80,7 +77,8 @@ fn match_push_instruction(instruction: &Span<Instruction>) -> Option<ImmediateWi
 // variants, such as `lt`. When writing `lt.2` in MASM, it is rewritten to `push.2 lt` at parsing
 // time. To differentiate the case when the MASM code contains `push.2 lt` or `lt.2` we can check if
 // the source span of the push instruction is different from the instruction one, which is only the
-// case if it was automatically rewritten.
+// case if it was automatically rewritten. This is a quirk of how the instruction is rewritten, see:
+// https://github.com/0xMiden/miden-vm/blob/506027aec5ac692c117eeb47f72fadb07d807012/assembly/src/parser/grammar.lalrpop#L782-L793
 fn match_non_immediate_instruction(
     prev_span: SourceSpan,
     imm: ImmediateWithoutSpan,

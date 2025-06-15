@@ -3,10 +3,10 @@ use miette::Diagnostic;
 
 #[derive(Debug, thiserror::Error, Diagnostic)]
 pub enum LintError {
-    #[error("push before instruction that takes an immediate value")]
-    #[diagnostic(help("use the instruction in its immediate form, e.g. `{alternative}`"))]
-    PushBeforeInstructionWithImmediateVariant {
-        #[label("can be rewritten to use an immediate")]
+    #[error("operand is pushed before an instruction that can take an immediate value")]
+    #[diagnostic(help("use the instruction in its immediate form `{alternative}`"))]
+    PushImmediate {
+        #[label("instruction can be rewritten to take the immediate directly")]
         span: SourceSpan,
         alternative: String,
     },

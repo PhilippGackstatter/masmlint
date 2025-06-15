@@ -8,7 +8,7 @@ use std::{
 
 use masmlint::{
     EarlyLintPass, Linter,
-    lints::{BareAssert, PushBeforeImmVariantInstr},
+    lints::{BareAssert, PushImmediate},
 };
 use miden_assembly::{SourceFile, SourceId};
 use miette::Report;
@@ -43,7 +43,7 @@ fn main() -> miette::Result<()> {
         let source_file = SourceFile::new(id, file_name, source_content);
 
         let early_lints: Vec<Box<dyn EarlyLintPass>> =
-            vec![Box::new(PushBeforeImmVariantInstr::new()), Box::new(BareAssert)];
+            vec![Box::new(PushImmediate::new()), Box::new(BareAssert)];
 
         if let Err(err) = Linter::new().lint(early_lints, Arc::new(source_file)) {
             errors.push(err);

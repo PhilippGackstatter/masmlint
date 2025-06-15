@@ -42,7 +42,7 @@ impl Linter {
         source: Arc<SourceFile>,
     ) -> Result<()> {
         // This is abusing the miden-assembly testing feature to be able to parse the forms,
-        // but there is not other public API to get the forms, unfortunately.
+        // but there is no other public API to get the forms, unfortunately.
         let forms = TestContext::new()
             .parse_forms(source)
             .context("failed to parse source into forms")?;

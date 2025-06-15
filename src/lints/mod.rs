@@ -1,5 +1,5 @@
-mod push_before_imm_variant_instr;
-pub use push_before_imm_variant_instr::PushBeforeImmVariantInstr;
+mod push_immediate;
+pub use push_immediate::PushImmediate;
 
 mod bare_assert;
 pub use bare_assert::BareAssert;
